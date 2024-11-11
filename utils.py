@@ -151,3 +151,98 @@ def remove_artifacts(spo2_signal, min_val=70, max_val=100):
     # Interpolate to replace NaN values
     cleaned_signal = pd.Series(cleaned_signal).interpolate(method='linear').to_numpy()
     return cleaned_signal
+
+
+
+#Five-fold Cross Validation for XGboost
+model = xgb.XGBClassifier(eval_metric='mlogloss')
+
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
+for fold, (train_index, test_index) in enumerate(kf.split(X)):
+    print(f" {fold + 1} fold")
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    
+    model = xgb.XGBClassifier(eval_metric='mlogloss')
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    
+    acc = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred, average='macro')  
+    
+    print(f"acc: {acc}")
+    print(f"F1 : {f1}\n")
+
+#Five-fold Cross Validation for Deep Learning Model
+for fold, (train_indices, val_indices) in enumerate(kfold.split(dataset, labels)):
+    print(f'FOLD {fold+1}')
+    print('--------------------------------')
+
+    
+    train_subset = Subset(dataset, train_indices)
+    val_subset = Subset(dataset, val_indices)
+
+    
+    train_loader = DataLoader(train_subset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_subset, batch_size=32, shuffle=False)
+
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # class_weights = torch.tensor([1.00, 5.00, 10.00]).to(device)
+    model = SENet_LSTM(num_classes=2)
+    # criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    model.to(device)
+    
+    num_epochs = 30
+    
+    for epoch in range(num_epochs):
+        model.train()
+        running_loss = 0.0
+        correct_train = 0
+        total_train = 0
+    
+        for data, labels1 in train_loader:
+            data = data.to(device)
+            labels1 = labels1.to(device)
+           
+            outputs = model(data)
+            loss = criterion(outputs, labels1)
+           
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item() * data.size(0)
+    
+            _, predicted = torch.max(outputs.data, 1)
+            total_train += labels1.size(0)
+            correct_train += (predicted == labels1).sum().item()
+    
+        epoch_loss = running_loss / len(train_loader.dataset)
+        train_accuracy = 100 * correct_train / total_train
+        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Training Accuracy: {train_accuracy:.2f}%')
+    
+   
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for val_samples, val_labels in val_loader:
+           
+            val_samples = val_samples.to(device)
+            val_labels = val_labels.to(device)
+
+            outputs = model(val_samples)
+            _, predicted = torch.max(outputs.data, 1)
+            total += val_labels.size(0)
+            correct += (predicted == val_labels).sum().item()
+
+    fold_accuracy = correct / total
+    fold_accuracies.append(fold_accuracy)
+    print(f'Accuracy for fold {fold+1}: {fold_accuracy * 100:.2f}%\n')
+
+
+average_accuracy = sum(fold_accuracies) / k_folds
+print(f'Average K-Fold Cross Validation Accuracy: {average_accuracy * 100:.2f}%')
