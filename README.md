@@ -10,7 +10,7 @@ The purpose of this repository is to showcase code implementations without inclu
 - main.py contains the data set division and model training related settings.
 - SE-LSTM_model.py contains the source code of the SE-LSTM model.
 - SEformer.py contains the source code of the SEformer model.
-- utils.py contains the source code for reading data and preprocessing data.
+- utils.py contains the source code for reading data, generating files in the corresponding format and preprocessing data.
 - XGboost.py contains the XGboost hyperparameter optimization algorithm.
 
 ## Contents
